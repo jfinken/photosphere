@@ -9,9 +9,6 @@
 </head>
 <body>
 	<div id="sphere"></div>
-	<a href="http://thematicmapping.org/" target="parent" class="tm">
-		<img src="http://thematicmapping.org/img/thematicmapping.png">
-	</a>	
 	<script src="http://threejs.org/build/three.min.js"></script>
 	<script src="js/OrbitControls.js"></script>	
 	<script src="js/Detector.js"></script>		
@@ -33,7 +30,7 @@
 		var sphere = new THREE.Mesh(
 			new THREE.SphereGeometry(100, 20, 20),
 			new THREE.MeshBasicMaterial({
-				map: THREE.ImageUtils.loadTexture('bergsjostolen.jpg')
+				map: THREE.ImageUtils.loadTexture('deck.jpg')
 			})
 		);
 		sphere.scale.x = -1;
@@ -42,7 +39,7 @@
 		var controls = new THREE.OrbitControls(camera);
 		controls.noPan = true;
 		controls.noZoom = true; 
-		controls.autoRotate = true;
+		controls.autoRotate = false;
 		controls.autoRotateSpeed = 0.5;
 
 		webglEl.appendChild(renderer.domElement);

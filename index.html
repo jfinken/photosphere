@@ -25,8 +25,6 @@
 
 		var camera = new THREE.PerspectiveCamera(75, width / height, 1, 1000);
 		camera.position.x = 0.1;
-        // uncomment me for a bit of a birds-eye view... 
-		// camera.position.y = 75.0;
 
 		var renderer = Detector.webgl ? new THREE.WebGLRenderer() : new THREE.CanvasRenderer();
 		renderer.setSize(width, height);
@@ -89,10 +87,13 @@
 
         //yellow
         var plane1 = new THREE.Mesh( new THREE.PlaneGeometry( 5, 5, 2, 2 ),
-                                     new THREE.MeshBasicMaterial( 
-                                         /*{color: 0xffff00, side: THREE.DoubleSide}*/
-                                         {map: THREE.ImageUtils.loadTexture('compassArrow.png')})
-                                     );
+                                     /*new THREE.MeshBasicMaterial( 
+                                         {color: 0xffff00, side: THREE.DoubleSide}
+                                         {map: THREE.ImageUtils.loadTexture('compassArrow.png')})*/
+                                    new THREE.MeshLambertMaterial(
+                                         {transparent: true, 
+                                          opacity: 0.65, 
+                                          map: THREE.ImageUtils.loadTexture('compassArrow.png')}));
         // lay it flat
         plane1.applyMatrix( new THREE.Matrix4().makeRotationX(-90.0 * Math.PI/180.0 ));
         // push it to the bottom of the sphere and out away from the origin
@@ -103,10 +104,13 @@
 
         // red 
         var plane2 = new THREE.Mesh( new THREE.PlaneGeometry( 5, 5, 2, 2 ),
-                                     new THREE.MeshBasicMaterial( 
-                                         /*{color: 0xff0000, side: THREE.DoubleSide}*/
-                                         {map: THREE.ImageUtils.loadTexture('compassArrow.png')})
-                                     );
+                                     /*new THREE.MeshBasicMaterial( 
+                                         {color: 0xffff00, side: THREE.DoubleSide}
+                                         {map: THREE.ImageUtils.loadTexture('compassArrow.png')})*/
+                                    new THREE.MeshLambertMaterial(
+                                         {transparent: true, 
+                                          opacity: 0.65, 
+                                          map: THREE.ImageUtils.loadTexture('compassArrow.png')}));
         plane2.applyMatrix( new THREE.Matrix4().makeRotationX(-90.0 * Math.PI/180.0 ));
         plane2.applyMatrix( new THREE.Matrix4().makeTranslation( 0, -10, -20 ) );
         link_red.add(plane2);
@@ -114,20 +118,27 @@
 
         // blue
         var plane3 = new THREE.Mesh( new THREE.PlaneGeometry( 5, 5, 2, 2 ),
-                                     new THREE.MeshBasicMaterial( 
-                                         /*{color: 0x0000ff, side: THREE.DoubleSide}*/
-                                         {map: THREE.ImageUtils.loadTexture('compassArrow.png')})
-                                     );
+                                     /*new THREE.MeshBasicMaterial( 
+                                         {color: 0xffff00, side: THREE.DoubleSide}
+                                         {map: THREE.ImageUtils.loadTexture('compassArrow.png')})*/
+                                    new THREE.MeshLambertMaterial(
+                                         {transparent: true, 
+                                          opacity: 0.65, 
+                                          map: THREE.ImageUtils.loadTexture('compassArrow.png')}));
         plane3.applyMatrix( new THREE.Matrix4().makeRotationX(-90.0 * Math.PI/180.0 ));
         plane3.applyMatrix( new THREE.Matrix4().makeTranslation( 0, -10, -20 ) );
         link_blue.add(plane3);
         link_blue.applyMatrix( new THREE.Matrix4().makeRotationY(210.0 * Math.PI/180.0 ));
-        
-        // textured 
+       
+        // 
         var plane4 = new THREE.Mesh( new THREE.PlaneGeometry( 5, 5, 2, 2 ),
-                                     new THREE.MeshBasicMaterial(
-                                         {map: THREE.ImageUtils.loadTexture('compassArrow.png')})
-                                   );
+                                     /*new THREE.MeshBasicMaterial( 
+                                         {color: 0xffff00, side: THREE.DoubleSide}
+                                         {map: THREE.ImageUtils.loadTexture('compassArrow.png')})*/
+                                    new THREE.MeshLambertMaterial(
+                                         {transparent: true, 
+                                          opacity: 0.65, 
+                                          map: THREE.ImageUtils.loadTexture('compassArrow.png')}));
         plane4.applyMatrix( new THREE.Matrix4().makeRotationX(-90.0 * Math.PI/180.0 ));
         plane4.applyMatrix( new THREE.Matrix4().makeTranslation( 0, -10, -20 ) );
         link_tex.add(plane4);

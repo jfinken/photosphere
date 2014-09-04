@@ -8,11 +8,13 @@
     </style>	
 </head>
 <body>
-	<div id="sphere"></div>
+    <button onclick="birdseye()">Sorta birds-eye</button>
+    <div id="sphere"></div>
 	<script src="http://threejs.org/build/three.min.js"></script>
 	<script src="js/OrbitControls.js"></script>	
 	<script src="js/Detector.js"></script>		
 	<script>
+        var bird = false;
 
 		var webglEl = document.getElementById('sphere');
 
@@ -23,10 +25,17 @@
 
 		var camera = new THREE.PerspectiveCamera(75, width / height, 1, 1000);
 		camera.position.x = 0.1;
+        // uncomment me for a bit of a birds-eye view... 
+		// camera.position.y = 75.0;
 
 		var renderer = Detector.webgl ? new THREE.WebGLRenderer() : new THREE.CanvasRenderer();
 		renderer.setSize(width, height);
 
+        //---------------------------------------------------------------------
+        // create our pano sphere
+        // NOTE: the sphere radius: 100.  All numbers are directly related and
+        // proportial to that number (scale)
+        //---------------------------------------------------------------------
 		var sphere = new THREE.Mesh(
 			new THREE.SphereGeometry(100, 20, 20),
 			new THREE.MeshBasicMaterial({
@@ -35,8 +44,106 @@
 		);
 		sphere.scale.x = -1;
 		scene.add(sphere);
+        //---------------------------------------------------------------------
+        // Adding cardinal axes for clarity
+        //---------------------------------------------------------------------
+        var arms_length = -20.0;
+        var axes = new THREE.Object3D();
+        var red_x = new THREE.Mesh( new THREE.BoxGeometry( 0.25, 0.25, 5 ),
+                                    new THREE.MeshBasicMaterial( {color: 0xff0000, side: THREE.DoubleSide} ));
+        red_x.applyMatrix( new THREE.Matrix4().makeRotationY(-90.0 * Math.PI/180.0 ));
+        red_x.applyMatrix( new THREE.Matrix4().makeTranslation( 0, 0, arms_length ) );
+        
+        var blue_z = new THREE.Mesh( new THREE.BoxGeometry( 0.25, 0.25, 5 ),
+                                     new THREE.MeshBasicMaterial( {color: 0x0000ff, side: THREE.DoubleSide} ));
+        blue_z.applyMatrix( new THREE.Matrix4().makeTranslation( -2.5, 0, arms_length - 2.5 ) );
+        var green_y = new THREE.Mesh( new THREE.BoxGeometry( 0.25, 0.25, 5 ),
+                                      new THREE.MeshBasicMaterial( {color: 0x00ff00, side: THREE.DoubleSide} ));
+        green_y.applyMatrix( new THREE.Matrix4().makeRotationX(90.0 * Math.PI/180.0 ));
+        green_y.applyMatrix( new THREE.Matrix4().makeTranslation( -2.5, 2.5, arms_length ) );
 
-		var controls = new THREE.OrbitControls(camera);
+        axes.add(red_x);
+        axes.add(green_y);
+        axes.add(blue_z);
+        axes.add(green_y);
+        scene.add(axes);
+
+        //---------------------------------------------------------------------
+        // WhereWeLive:  adding Link geom here
+        //
+        // An important thing to notice here is that the rotations about X, the
+        // translations along Y and Z for all of link_* objects are the same. 
+        // The only difference is the last makeRotationY() method calls, this
+        // is where you'll plug in the headings of the links...
+        //
+        // Next: 
+        //  - how to make them clickable..addEventListener won't work (AFAICT)
+        //  - http://stackoverflow.com/questions/17638933/three-js-clickable-objects
+        //  - bingo: raycasting or unproject will do it... 
+        //---------------------------------------------------------------------
+        var links_parent    = new THREE.Object3D();
+        var link_red        = new THREE.Object3D();
+        var link_yellow     = new THREE.Object3D();
+        var link_blue       = new THREE.Object3D();
+        var link_tex        = new THREE.Object3D();
+
+        //yellow
+        var plane1 = new THREE.Mesh( new THREE.PlaneGeometry( 5, 5, 2, 2 ),
+                                     new THREE.MeshBasicMaterial( 
+                                         /*{color: 0xffff00, side: THREE.DoubleSide}*/
+                                         {map: THREE.ImageUtils.loadTexture('compassArrow.png')})
+                                     );
+        // lay it flat
+        plane1.applyMatrix( new THREE.Matrix4().makeRotationX(-90.0 * Math.PI/180.0 ));
+        // push it to the bottom of the sphere and out away from the origin
+        plane1.applyMatrix( new THREE.Matrix4().makeTranslation( 0, -10, -20 ) );
+        // now rotate it by n degrees: here is where the link heading will be applied
+        link_yellow.add(plane1);
+        link_yellow.applyMatrix( new THREE.Matrix4().makeRotationY(20.0 * Math.PI/180.0 ));
+
+        // red 
+        var plane2 = new THREE.Mesh( new THREE.PlaneGeometry( 5, 5, 2, 2 ),
+                                     new THREE.MeshBasicMaterial( 
+                                         /*{color: 0xff0000, side: THREE.DoubleSide}*/
+                                         {map: THREE.ImageUtils.loadTexture('compassArrow.png')})
+                                     );
+        plane2.applyMatrix( new THREE.Matrix4().makeRotationX(-90.0 * Math.PI/180.0 ));
+        plane2.applyMatrix( new THREE.Matrix4().makeTranslation( 0, -10, -20 ) );
+        link_red.add(plane2);
+        link_red.applyMatrix( new THREE.Matrix4().makeRotationY(80.0 * Math.PI/180.0 ));
+
+        // blue
+        var plane3 = new THREE.Mesh( new THREE.PlaneGeometry( 5, 5, 2, 2 ),
+                                     new THREE.MeshBasicMaterial( 
+                                         /*{color: 0x0000ff, side: THREE.DoubleSide}*/
+                                         {map: THREE.ImageUtils.loadTexture('compassArrow.png')})
+                                     );
+        plane3.applyMatrix( new THREE.Matrix4().makeRotationX(-90.0 * Math.PI/180.0 ));
+        plane3.applyMatrix( new THREE.Matrix4().makeTranslation( 0, -10, -20 ) );
+        link_blue.add(plane3);
+        link_blue.applyMatrix( new THREE.Matrix4().makeRotationY(210.0 * Math.PI/180.0 ));
+        
+        // textured 
+        var plane4 = new THREE.Mesh( new THREE.PlaneGeometry( 5, 5, 2, 2 ),
+                                     new THREE.MeshBasicMaterial(
+                                         {map: THREE.ImageUtils.loadTexture('compassArrow.png')})
+                                   );
+        plane4.applyMatrix( new THREE.Matrix4().makeRotationX(-90.0 * Math.PI/180.0 ));
+        plane4.applyMatrix( new THREE.Matrix4().makeTranslation( 0, -10, -20 ) );
+        link_tex.add(plane4);
+        link_tex.applyMatrix( new THREE.Matrix4().makeRotationY(300.0 * Math.PI/180.0 ));
+        
+        links_parent.add(link_yellow);
+        links_parent.add(link_red);
+        links_parent.add(link_blue);
+        links_parent.add(link_tex);
+
+        scene.add(links_parent);
+        //---------------------------------------------------------------------
+        // end link work
+        //---------------------------------------------------------------------
+		
+        var controls = new THREE.OrbitControls(camera);
 		controls.noPan = true;
 		controls.noZoom = true; 
 		controls.autoRotate = false;
@@ -51,6 +158,17 @@
 			requestAnimationFrame(render);
 			renderer.render(scene, camera);
 		}
+        //---------------------------------------------------------------------
+        // JF: you definitely want this so adding now... 
+        // Create an event listener that resizes the renderer with the browser.
+        //---------------------------------------------------------------------
+        window.addEventListener('resize', function() {
+            var WIDTH = window.innerWidth,
+                HEIGHT = window.innerHeight;
+            renderer.setSize(WIDTH, HEIGHT);
+            camera.aspect = WIDTH / HEIGHT;
+            camera.updateProjectionMatrix();
+        }); 
 
 		function onMouseWheel(event) {
 			event.preventDefault();
@@ -69,7 +187,18 @@
 
 		document.addEventListener('mousewheel', onMouseWheel, false);
 		document.addEventListener('DOMMouseScroll', onMouseWheel, false);
-
+    
+        function birdseye() {
+            if (bird) {
+		        camera.position.y = 0.0;
+		        camera.position.x = 0.1;
+                bird = false;
+            }
+            else {
+		        camera.position.y = 75.0;
+                bird = true;
+            }
+        }
 	</script>
 </body>
 </html>

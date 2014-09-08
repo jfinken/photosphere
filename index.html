@@ -3,23 +3,26 @@
 <head>
 	<title>Photo sphere with three.js</title>
 	<style>
-		body { margin: 0; overflow: hidden; background-color: #000; }
+		body { margin: 0px; overflow: hidden; background-color: #000; }
 		.tm  { position: absolute; top: 10px; right: 10px; }
     </style>	
 </head>
 <body>
     <button onclick="birdseye()">Sorta birds-eye</button>
     <div id="sphere"></div>
-	<script src="http://threejs.org/build/three.min.js"></script>
+    <!--<script src="http://threejs.org/build/three.min.js"></script>-->
+    <script src="js/three.min.js"></script>
 	<script src="js/OrbitControls.js"></script>	
 	<script src="js/Detector.js"></script>		
 	<script>
         var bird = false;
-
 		var webglEl = document.getElementById('sphere');
-
 		var width  = window.innerWidth,
 			height = window.innerHeight;
+
+        var mouse = { x: 0, y: 0 }
+        var projector = new THREE.Projector();
+        var objects = [];
 
 		var scene = new THREE.Scene();
 
@@ -28,6 +31,7 @@
 
 		var renderer = Detector.webgl ? new THREE.WebGLRenderer() : new THREE.CanvasRenderer();
 		renderer.setSize(width, height);
+        //renderer.domElement.addEventListener( 'mousedown', onDocumentMouseDown, false );
 
         //---------------------------------------------------------------------
         // create our pano sphere
@@ -87,13 +91,13 @@
 
         //yellow
         var plane1 = new THREE.Mesh( new THREE.PlaneGeometry( 5, 5, 2, 2 ),
-                                     /*new THREE.MeshBasicMaterial( 
-                                         {color: 0xffff00, side: THREE.DoubleSide}
-                                         {map: THREE.ImageUtils.loadTexture('compassArrow.png')})*/
-                                    new THREE.MeshLambertMaterial(
+                                     new THREE.MeshBasicMaterial( 
+                                         {color: 0xffff00, side: THREE.DoubleSide}));
+                                    /*new THREE.MeshLambertMaterial(
                                          {transparent: true, 
                                           opacity: 0.65, 
                                           map: THREE.ImageUtils.loadTexture('compassArrow.png')}));
+                                    */
         // lay it flat
         plane1.applyMatrix( new THREE.Matrix4().makeRotationX(-90.0 * Math.PI/180.0 ));
         // push it to the bottom of the sphere and out away from the origin
@@ -149,6 +153,12 @@
         links_parent.add(link_blue);
         links_parent.add(link_tex);
 
+        // for ray-intesection test for picking...
+        objects.push(link_yellow);
+        objects.push(link_red);
+        objects.push(link_blue);
+        objects.push(link_tex);
+
         scene.add(links_parent);
         //---------------------------------------------------------------------
         // end link work
@@ -180,6 +190,28 @@
             camera.aspect = WIDTH / HEIGHT;
             camera.updateProjectionMatrix();
         }); 
+        //---------------------------------------------------------------------
+        // initial work to select links 
+        //---------------------------------------------------------------------
+        window.addEventListener('mousedown', function (ev) {
+            if (ev.target == renderer.domElement) {
+                //var vector = new THREE.Vector3((ev.clientX / window.innerWidth) * 2 - 1, -(ev.clientY / window.innerHeight) * 2 + 1, 0.5);
+
+                mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+                mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+                //console.log(event.clientX, event.clientY)
+                //console.log(window.innerWidth , window.innerHeight )
+                //console.log(mouse.x, mouse.y)
+
+                var vector = new THREE.Vector3( mouse.x, mouse.y, 1 );
+                projector.unprojectVector(vector, camera);
+
+                var raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
+
+                var intersects = raycaster.intersectObjects(objects);
+                console.log(intersects[0]);
+            }
+        }, false);
 
 		function onMouseWheel(event) {
 			event.preventDefault();

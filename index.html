@@ -8,7 +8,7 @@
     </style>	
 </head>
 <body>
-    <button onclick="birdseye()">Sorta birds-eye</button>
+<!--<button onclick="birdseye()">Sorta birds-eye</button>-->
     <div id="sphere"></div>
     <!--<script src="http://threejs.org/build/three.min.js"></script>-->
     <script src="js/three.min.js"></script>
@@ -23,10 +23,11 @@
         var mouse = { x: 0, y: 0 }
         var projector = new THREE.Projector();
         var objects = [];
+        var SELECTED = null;
 
 		var scene = new THREE.Scene();
 
-		var camera = new THREE.PerspectiveCamera(75, width / height, 1, 1000);
+		var camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
 		camera.position.x = 0.1;
 
 		var renderer = Detector.webgl ? new THREE.WebGLRenderer() : new THREE.CanvasRenderer();
@@ -41,7 +42,10 @@
 		var sphere = new THREE.Mesh(
 			new THREE.SphereGeometry(100, 20, 20),
 			new THREE.MeshBasicMaterial({
-				map: THREE.ImageUtils.loadTexture('deck.jpg')
+				map:  THREE.ImageUtils.loadTexture('deck.jpg')
+                // NOTE: force-rendering both 'sides' of the sphere help power
+                // the raycasting selection on the sphere itself, else the ray "hits" nothing
+                //side: THREE.DoubleSide
 			})
 		);
 		sphere.scale.x = -1;
@@ -55,7 +59,7 @@
                                     new THREE.MeshBasicMaterial( {color: 0xff0000, side: THREE.DoubleSide} ));
         red_x.applyMatrix( new THREE.Matrix4().makeRotationY(-90.0 * Math.PI/180.0 ));
         red_x.applyMatrix( new THREE.Matrix4().makeTranslation( 0, 0, arms_length ) );
-        
+
         var blue_z = new THREE.Mesh( new THREE.BoxGeometry( 0.25, 0.25, 5 ),
                                      new THREE.MeshBasicMaterial( {color: 0x0000ff, side: THREE.DoubleSide} ));
         blue_z.applyMatrix( new THREE.Matrix4().makeTranslation( -2.5, 0, arms_length - 2.5 ) );
@@ -78,10 +82,6 @@
         // The only difference is the last makeRotationY() method calls, this
         // is where you'll plug in the headings of the links...
         //
-        // Next: 
-        //  - how to make them clickable..addEventListener won't work (AFAICT)
-        //  - http://stackoverflow.com/questions/17638933/three-js-clickable-objects
-        //  - bingo: raycasting or unproject will do it... 
         //---------------------------------------------------------------------
         var links_parent    = new THREE.Object3D();
         var link_red        = new THREE.Object3D();
@@ -91,13 +91,13 @@
 
         //yellow
         var plane1 = new THREE.Mesh( new THREE.PlaneGeometry( 5, 5, 2, 2 ),
-                                     new THREE.MeshBasicMaterial( 
-                                         {color: 0xffff00, side: THREE.DoubleSide}));
-                                    /*new THREE.MeshLambertMaterial(
+                                     /*new THREE.MeshBasicMaterial( 
+                                         {color: 0xffff00, side: THREE.DoubleSide}));*/
+                                    new THREE.MeshLambertMaterial(
                                          {transparent: true, 
                                           opacity: 0.65, 
-                                          map: THREE.ImageUtils.loadTexture('compassArrow.png')}));
-                                    */
+                                          map: THREE.ImageUtils.loadTexture('nav-arrow.png')}));
+        plane1.name = 'yellow_dude';
         // lay it flat
         plane1.applyMatrix( new THREE.Matrix4().makeRotationX(-90.0 * Math.PI/180.0 ));
         // push it to the bottom of the sphere and out away from the origin
@@ -114,7 +114,8 @@
                                     new THREE.MeshLambertMaterial(
                                          {transparent: true, 
                                           opacity: 0.65, 
-                                          map: THREE.ImageUtils.loadTexture('compassArrow.png')}));
+                                          side: THREE.DoubleSide,
+                                          map: THREE.ImageUtils.loadTexture('nav-arrow.png')}));
         plane2.applyMatrix( new THREE.Matrix4().makeRotationX(-90.0 * Math.PI/180.0 ));
         plane2.applyMatrix( new THREE.Matrix4().makeTranslation( 0, -10, -20 ) );
         link_red.add(plane2);
@@ -128,7 +129,7 @@
                                     new THREE.MeshLambertMaterial(
                                          {transparent: true, 
                                           opacity: 0.65, 
-                                          map: THREE.ImageUtils.loadTexture('compassArrow.png')}));
+                                          map: THREE.ImageUtils.loadTexture('nav-arrow.png')}));
         plane3.applyMatrix( new THREE.Matrix4().makeRotationX(-90.0 * Math.PI/180.0 ));
         plane3.applyMatrix( new THREE.Matrix4().makeTranslation( 0, -10, -20 ) );
         link_blue.add(plane3);
@@ -142,7 +143,7 @@
                                     new THREE.MeshLambertMaterial(
                                          {transparent: true, 
                                           opacity: 0.65, 
-                                          map: THREE.ImageUtils.loadTexture('compassArrow.png')}));
+                                          map: THREE.ImageUtils.loadTexture('nav-arrow.png')}));
         plane4.applyMatrix( new THREE.Matrix4().makeRotationX(-90.0 * Math.PI/180.0 ));
         plane4.applyMatrix( new THREE.Matrix4().makeTranslation( 0, -10, -20 ) );
         link_tex.add(plane4);
@@ -154,10 +155,10 @@
         links_parent.add(link_tex);
 
         // for ray-intesection test for picking...
-        objects.push(link_yellow);
-        objects.push(link_red);
-        objects.push(link_blue);
-        objects.push(link_tex);
+        objects.push(plane1);
+        objects.push(plane2);
+        objects.push(plane3);
+        objects.push(plane4);
 
         scene.add(links_parent);
         //---------------------------------------------------------------------
@@ -191,25 +192,47 @@
             camera.updateProjectionMatrix();
         }); 
         //---------------------------------------------------------------------
-        // initial work to select links 
+        // Select geometry:
+        // - unproject the mouse-down to 3D
+        // - use the raycaster to find hit objects (assert you push any testable
+        //   objects to the `objects`)
+        // - on hit, tint that object
+        // - on-mouse-up, revert tint
+        //
+        // NOTE: 
+        // You are unprojecting 2D to 3D so if you add any dom elements on top of 
+        // this window/renderer * BE SURE * to incorporate the height and width 
+        // offsets when calculating mouse.x,y else your object-intersection
+        // will not work properly
         //---------------------------------------------------------------------
         window.addEventListener('mousedown', function (ev) {
             if (ev.target == renderer.domElement) {
-                //var vector = new THREE.Vector3((ev.clientX / window.innerWidth) * 2 - 1, -(ev.clientY / window.innerHeight) * 2 + 1, 0.5);
+			    event.preventDefault();
 
                 mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
                 mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-                //console.log(event.clientX, event.clientY)
-                //console.log(window.innerWidth , window.innerHeight )
-                //console.log(mouse.x, mouse.y)
-
+                
                 var vector = new THREE.Vector3( mouse.x, mouse.y, 1 );
                 projector.unprojectVector(vector, camera);
 
                 var raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
 
                 var intersects = raycaster.intersectObjects(objects);
-                console.log(intersects[0]);
+                //if intersects[0] is instanceof(THREE.Mesh)
+                if (intersects[0] != undefined) {
+                    SELECTED = intersects[0];
+                    SELECTED.object.material.opacity = 0.10;
+                }
+            }
+        }, false);
+        window.addEventListener('mouseup', function (ev) {
+            if (ev.target == renderer.domElement) {
+			    event.preventDefault();
+
+                if (SELECTED != null){
+                    SELECTED.object.material.opacity = 0.65;
+                    SELECTED = null;
+                }
             }
         }, false);
 
